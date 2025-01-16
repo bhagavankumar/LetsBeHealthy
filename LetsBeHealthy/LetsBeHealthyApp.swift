@@ -20,7 +20,7 @@ struct LetsBeHealthyApp: App {
                 .onAppear {
                     GIDSignIn.sharedInstance.restorePreviousSignIn{ user, error in
                         if  let user{
-                            self.user = .init(name: user.profile?.name ?? "")
+                            self.user = .init(name: user.profile?.name ?? "", email: user.profile?.email ?? "", password: "")
                             LoginView(isLoggedIn: $isLoggedIn, user: $user)
                         }
                         
@@ -29,8 +29,10 @@ struct LetsBeHealthyApp: App {
         }
     }
 }
-struct User{
+struct User: Codable {
     var name: String
+    var email: String
+    var password: String
 }
 
 

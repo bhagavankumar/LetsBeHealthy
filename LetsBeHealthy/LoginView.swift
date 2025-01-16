@@ -4,7 +4,7 @@ import GoogleSignInSwift
 import AuthenticationServices
 
 struct LoginView: View {
-
+    
     @Binding var isLoggedIn: Bool
     @Binding var user: User?
     @State private var isLogin: Bool = true // Toggle between login and signup
@@ -45,47 +45,57 @@ struct LoginView: View {
             }
         }
     }
-}
-
+    }
+    
 struct LoginOnlyView: View {
     @Binding var isLoggedIn: Bool
     @Binding var user: User?
+    @StateObject private var authViewModel = AuthViewModel()
+    
     @State private var email: String = ""
     @State private var password: String = ""
-
+    
     var body: some View {
-        
-        TextField("Email", text:$email)
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .padding()
-        
-        SecureField("Password", text: $password)
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .padding()
-        
-        Button("Login with Email") {
-            self.user = User(name: "John Doe")
-            self.isLoggedIn = true
-        }
-        .padding()
-        
         VStack(spacing: 20) {
-            GoogleSignInButton {
-                handleGoogleSignIn()
+            TextField("Email", text: $email)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+                .autocapitalization(.none)
+                .keyboardType(.emailAddress)
+            
+            SecureField("Password", text: $password)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+            
+            Button("Login") {
+                if authViewModel.login(email: email, password: password) {
+                    user = authViewModel.users.first(where: { $0.email == email })
+                    isLoggedIn = true
+                }
             }
             .padding()
-
-            AppleSignInButton()
-                .frame(height: 50)
-                .onTapGesture {
-                    handleAppleSignIn()
+            
+            VStack(spacing: 20) {
+                GoogleSignInButton {
+                    handleGoogleSignIn()
                 }
                 .padding()
-
+                
+                AppleSignInButton()
+                    .frame(height: 50)
+                    .onTapGesture {
+                        handleAppleSignIn()
+                    }
+                    .padding()
+                
+                if !authViewModel.errorMessage.isEmpty {
+                    Text(authViewModel.errorMessage)
+                        .foregroundColor(.red)
+                }
+            }
+            .padding()
         }
-        .padding()
     }
-
     struct AppleSignInButton: UIViewRepresentable {
         func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
             return ASAuthorizationAppleIDButton()
@@ -108,11 +118,11 @@ struct LoginOnlyView: View {
             
             guard let user = signInResult?.user else { return }
             print("Google User Signed In: \(user.profile?.name ?? "Unknown")")
-            self.user = User(name: user.profile?.name ?? "")
+            self.user = .init(name: user.profile?.name ?? "", email: user.profile?.email ?? "",password: "")
             isLoggedIn = true
         }
     }
-
+    
     func handleAppleSignIn() {
         let provider = ASAuthorizationAppleIDProvider()
         let request = provider.createRequest()
@@ -136,46 +146,61 @@ struct LoginOnlyView: View {
                 print("Email: \(email ?? "No email")")
             }
         }
-
+        
         func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
             print("Apple Sign-In Failed: \(error.localizedDescription)")
         }
     }
 }
-
-struct SignupView: View {
-    @Binding var isLoggedIn: Bool
-    @Binding var user: User?
-    @State private var name: String = ""
-    @State private var email: String = ""
-    @State private var password: String = ""
-
-    var body: some View {
-        VStack(spacing: 20) {
-            TextField("Name", text: $name)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
+        
+        struct SignupView: View {
+            @Binding var isLoggedIn: Bool
+            @Binding var user: User?
+            @StateObject private var authViewModel = AuthViewModel()
             
-            TextField("Email", text:$email)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
+            @State private var name: String = ""
+            @State private var email: String = ""
+            @State private var password: String = ""
             
-            SecureField("Password", text: $password)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+            var body: some View {
+                VStack(spacing: 20) {
+                    TextField("Name", text: $name)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    
+                    TextField("Email", text: $email)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
+                    
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    
+                    Button("Sign Up") {
+                        if authViewModel.signUp(name: name, email: email, password: password) {
+                            user = User(name: name, email: email, password: password)
+                            isLoggedIn = true
+                        }
+                    }
+                    .padding()
+                    
+                    if !authViewModel.errorMessage.isEmpty {
+                        Text(authViewModel.errorMessage)
+                            .foregroundColor(.red)
+                    }
+                }
                 .padding()
-            
-            Button("Sign Up") {
-                self.user = User(name: "New User")
-                self.isLoggedIn = true
             }
-            .padding()
         }
-        .padding()
-    }
-}
 
-struct LoginSignupView_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginView(isLoggedIn: .constant(false), user: .constant(nil))
-    }
-}
+        
+        struct LoginSignupView_Previews: PreviewProvider {
+            static var previews: some View {
+                LoginView(isLoggedIn: .constant(false), user: .constant(nil))
+            }
+        }
+    
+    
+
